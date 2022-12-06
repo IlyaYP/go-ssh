@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"bytes"
 
@@ -13,19 +14,52 @@ import (
 )
 
 func main() {
-	hosts := []string{"10.128.0.37", "10.128.0.36", "10.128.0.35"}
+	hosts := []string{"10.128.0.37", "10.128.0.36", "10.128.0.35",
+		"10.127.0.10",
+		"10.127.0.101",
+		"10.127.0.102",
+		"10.127.0.11",
+		"10.127.0.112",
+		"10.127.0.12",
+		"10.127.0.133",
+		"10.127.0.14",
+		"10.127.0.15",
+		"10.127.0.153",
+		"10.127.0.154",
+		"10.127.0.155",
+		"10.127.0.158",
+		"10.127.0.159",
+		"10.127.0.200",
+		"10.127.0.212",
+		"10.127.0.54",
+		"10.127.0.53",
+		"10.127.0.55",
+		"10.127.0.56",
+		"10.127.0.57",
+		"10.127.0.58",
+		"10.127.0.59",
+		"10.127.0.60",
+		"10.127.0.65",
+		"10.127.0.103",
+		"10.127.0.104",
+	}
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
+	var wg sync.WaitGroup
 	for _, hostname := range hosts {
-		run(hostname, username, password)
+		wg.Add(1)
+		go run(hostname, username, password, &wg)
 	}
+	log.Print("waiting")
+	wg.Wait()
+	log.Print("all done")
+
 }
 
-func run(hostname, username, password string) {
+func run(hostname, username, password string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	var reConf = regexp.MustCompile(`(?s)Current configuration .*end`)
 	var reHost = regexp.MustCompile(`(?m)^hostname\s([-0-9A-Za-z_]+).?$`)
-	// log.Println(username, password)
-	// hostname := "10.128.0.36"
 	port := "22"
 
 	// SSH client config
@@ -52,7 +86,8 @@ func run(hostname, username, password string) {
 	// Connect to host
 	client, err := ssh.Dial("tcp", hostname+":"+port, config)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 	defer client.Close()
 
@@ -66,7 +101,8 @@ func run(hostname, username, password string) {
 	// StdinPipe for commands
 	stdin, err := sess.StdinPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 
 	// Uncomment to store output in variable
@@ -82,7 +118,8 @@ func run(hostname, username, password string) {
 	// Start remote shell
 	err = sess.Shell()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 
 	// send the commands
@@ -94,7 +131,8 @@ func run(hostname, username, password string) {
 	for _, cmd := range commands {
 		_, err = fmt.Fprintf(stdin, "%s\n", cmd)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
+			return
 		}
 	}
 
@@ -102,7 +140,8 @@ func run(hostname, username, password string) {
 	// Wait for sess to finish
 	err = sess.Wait()
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 
 	// Uncomment to store in variable
@@ -117,16 +156,16 @@ func run(hostname, username, password string) {
 
 		if reConf.Match(out) {
 			config := reConf.FindAll(out, -1)[0]
-			// fmt.Println(string(config))
 			err := os.WriteFile(fname, config, 0644)
 			if err != nil {
-				log.Fatal(err)
+				log.Print(err)
+				return
 			}
 		} else {
-			fmt.Println("NO")
+			log.Print(hostname, "config not found")
 		}
 	} else {
-		fmt.Println("NO")
+		log.Print(hostname, "hostname not found")
 	}
 
 }
