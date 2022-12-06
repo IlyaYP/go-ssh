@@ -13,14 +13,19 @@ import (
 )
 
 func main() {
-
-	var reConf = regexp.MustCompile(`(?s)Current configuration .*end`)
-	var reHost = regexp.MustCompile(`(?m)hostname\s([-0-9A-Za-z_]+)`)
+	hosts := []string{"10.128.0.37", "10.128.0.36", "10.128.0.35"}
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
+	for _, hostname := range hosts {
+		run(hostname, username, password)
+	}
+}
+
+func run(hostname, username, password string) {
+	var reConf = regexp.MustCompile(`(?s)Current configuration .*end`)
+	var reHost = regexp.MustCompile(`(?m)^hostname\s([-0-9A-Za-z_]+).?$`)
 	// log.Println(username, password)
-	hostname := "10.128.0.36"
-	// hosts := []string{"1", "2", "3"}
+	// hostname := "10.128.0.36"
 	port := "22"
 
 	// SSH client config
@@ -41,8 +46,9 @@ func main() {
 	)
 
 	config.Ciphers = append(config.Ciphers, "aes128-cbc", "3des-cbc",
-		"aes192-cbc", "aes256-cbc")
+		"aes192-cbc", "aes256-cbc", "aes128-ctr", "aes192-ctr", "aes256-ctr")
 
+	//////////////////////////////
 	// Connect to host
 	client, err := ssh.Dial("tcp", hostname+":"+port, config)
 	if err != nil {
@@ -81,8 +87,8 @@ func main() {
 
 	// send the commands
 	commands := []string{
-		"sh clock",
-		"sh run",
+		"terminal length 0",
+		"show running-config",
 		"exit",
 	}
 	for _, cmd := range commands {
@@ -92,6 +98,7 @@ func main() {
 		}
 	}
 
+	// log.Print(hostname)
 	// Wait for sess to finish
 	err = sess.Wait()
 	if err != nil {
@@ -106,11 +113,11 @@ func main() {
 	if reHost.Match(out) {
 		fname := string(reHost.FindSubmatch(out)[1])
 
-		fmt.Println(fname)
+		log.Print(fname)
 
 		if reConf.Match(out) {
 			config := reConf.FindAll(out, -1)[0]
-			fmt.Println(string(config))
+			// fmt.Println(string(config))
 			err := os.WriteFile(fname, config, 0644)
 			if err != nil {
 				log.Fatal(err)
