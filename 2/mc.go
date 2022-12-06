@@ -43,10 +43,14 @@ func main() {
 		"10.127.0.103",
 		"10.127.0.104",
 	}
+
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
-	// log.Print(username, password)
-	// return
+	if len(password) == 0 || len(username) == 0 {
+		log.Print("empty username or password")
+		return
+	}
+
 	var wg sync.WaitGroup
 	for _, hostname := range hosts {
 		wg.Add(1)
