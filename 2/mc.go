@@ -10,6 +10,7 @@ import (
 
 	"regexp"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -47,8 +48,19 @@ func main() {
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
 	if len(password) == 0 || len(username) == 0 {
-		log.Print("empty username or password")
-		return
+		log.Print("empty username or password, try load .env")
+
+		err := godotenv.Load(".env")
+
+		if err != nil {
+			log.Fatal("Error loading .env file", err)
+		}
+	}
+
+	username = os.Getenv("USERNAME")
+	password = os.Getenv("PW")
+	if len(password) == 0 || len(username) == 0 {
+		log.Fatal("empty username or password")
 	}
 
 	var wg sync.WaitGroup
