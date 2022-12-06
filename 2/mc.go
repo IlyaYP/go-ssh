@@ -45,6 +45,8 @@ func main() {
 	}
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
+	// log.Print(username, password)
+	// return
 	var wg sync.WaitGroup
 	for _, hostname := range hosts {
 		wg.Add(1)
