@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"bytes"
 
@@ -16,34 +15,39 @@ import (
 )
 
 func main() {
-	hosts := []string{"127.0.0.1", "10.128.0.37", "10.128.0.36", "10.128.0.35"} // "10.127.0.10",
-	// "10.127.0.101",
-	// "10.127.0.102",
-	// "10.127.0.11",
-	// "10.127.0.112",
-	// "10.127.0.12",
-	// "10.127.0.133",
-	// "10.127.0.14",
-	// "10.127.0.15",
-	// "10.127.0.153",
-	// "10.127.0.154",
-	// "10.127.0.155",
-	// "10.127.0.158",
-	// "10.127.0.159",
-	// "10.127.0.200",
-	// "10.127.0.212",
-	// "10.127.0.54",
-	// "10.127.0.53",
-	// "10.127.0.55",
-	// "10.127.0.56",
-	// "10.127.0.57",
-	// "10.127.0.58",
-	// "10.127.0.59",
-	// "10.127.0.60",
-	// "10.127.0.65",
-	// "10.127.0.103",
-	// "10.127.0.104",
-
+	hosts := []string{
+		"10.127.0.10",
+		"10.127.0.101",
+		"10.127.0.102",
+		"10.127.0.11",
+		"10.127.0.112",
+		"10.127.0.12",
+		"10.127.0.133",
+		"10.127.0.14",
+		"10.127.0.15",
+		"10.127.0.153",
+		"10.127.0.154",
+		"10.127.0.155",
+		"10.127.0.158",
+		"10.127.0.159",
+		"10.127.0.200",
+		"10.127.0.212",
+		"10.127.0.54",
+		"10.127.0.53",
+		"10.127.0.55",
+		"10.127.0.56",
+		"10.127.0.57",
+		"10.127.0.58",
+		"10.127.0.59",
+		"10.127.0.60",
+		"10.127.0.65",
+		"10.127.0.103",
+		"10.127.0.104",
+		// switches
+		"10.128.0.37",
+		"10.128.0.36",
+		"10.128.0.35",
+	}
 	username := os.Getenv("USERNAME")
 	password := os.Getenv("PW")
 	if len(password) == 0 || len(username) == 0 {
@@ -64,26 +68,20 @@ func main() {
 
 	g := new(errgroup.Group)
 	for _, hostname := range hosts {
-		// wg.Add(1)
-		// go run(hostname, username, password, &wg)
-
 		hostname := hostname // https://go.dev/doc/faq#closures_and_goroutines
 		g.Go(func() error {
 			err := run(hostname, username, password)
 			return err
 		})
-
 	}
 
-	// Wait for all HTTP fetches to complete.
+	log.Print("doing")
 	err := g.Wait()
 	if err != nil {
 		log.Print(err)
+	} else {
+		log.Print("all done no errors")
 	}
-
-	// log.Print("waiting")
-	// wg.Wait()
-	// log.Print("all done")
 
 }
 
@@ -116,6 +114,7 @@ func run(hostname, username, password string) error {
 	// Connect to host
 	client, err := ssh.Dial("tcp", hostname+":"+port, config)
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 	defer client.Close()
@@ -123,6 +122,7 @@ func run(hostname, username, password string) error {
 	// Create sesssion
 	sess, err := client.NewSession()
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 	defer sess.Close()
@@ -130,6 +130,7 @@ func run(hostname, username, password string) error {
 	// StdinPipe for commands
 	stdin, err := sess.StdinPipe()
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -146,6 +147,7 @@ func run(hostname, username, password string) error {
 	// Start remote shell
 	err = sess.Shell()
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -158,6 +160,7 @@ func run(hostname, username, password string) error {
 	for _, cmd := range commands {
 		_, err = fmt.Fprintf(stdin, "%s\n", cmd)
 		if err != nil {
+			log.Print(err)
 			return err
 		}
 	}
@@ -166,6 +169,7 @@ func run(hostname, username, password string) error {
 	// Wait for sess to finish
 	err = sess.Wait()
 	if err != nil {
+		log.Print(err)
 		return err
 	}
 
@@ -183,6 +187,7 @@ func run(hostname, username, password string) error {
 			config := reConf.FindAll(out, -1)[0]
 			err := os.WriteFile(fname, config, 0644)
 			if err != nil {
+				log.Print(err)
 				return err
 			}
 		} else {
@@ -191,6 +196,6 @@ func run(hostname, username, password string) error {
 	} else {
 		log.Print(hostname, "hostname not found")
 	}
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 	return nil
 }
