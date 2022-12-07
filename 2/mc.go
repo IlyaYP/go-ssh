@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
 
 	"bytes"
 
@@ -12,6 +11,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -63,19 +63,29 @@ func main() {
 		log.Fatal("empty username or password")
 	}
 
-	var wg sync.WaitGroup
+	g := new(errgroup.Group)
 	for _, hostname := range hosts {
-		wg.Add(1)
-		go run(hostname, username, password, &wg)
+		// wg.Add(1)
+		// go run(hostname, username, password, &wg)
+
+		g.Go(func() error {
+			return run(hostname, username, password)
+		})
+
 	}
-	log.Print("waiting")
-	wg.Wait()
-	log.Print("all done")
+
+	// Wait for all HTTP fetches to complete.
+	if err := g.Wait(); err == nil {
+		fmt.Println("Successfully fetched all URLs.")
+	}
+
+	// log.Print("waiting")
+	// wg.Wait()
+	// log.Print("all done")
 
 }
 
-func run(hostname, username, password string, wg *sync.WaitGroup) {
-	defer wg.Done()
+func run(hostname, username, password string) error {
 	var reConf = regexp.MustCompile(`(?s)Current configuration .*end`)
 	var reHost = regexp.MustCompile(`(?m)^hostname\s([-0-9A-Za-z_]+).?$`)
 	port := "22"
@@ -104,23 +114,21 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 	// Connect to host
 	client, err := ssh.Dial("tcp", hostname+":"+port, config)
 	if err != nil {
-		log.Print(err)
-		return
+		return err
 	}
 	defer client.Close()
 
 	// Create sesssion
 	sess, err := client.NewSession()
 	if err != nil {
-		log.Fatal("Failed to create session: ", err)
+		return err
 	}
 	defer sess.Close()
 
 	// StdinPipe for commands
 	stdin, err := sess.StdinPipe()
 	if err != nil {
-		log.Print(err)
-		return
+		return err
 	}
 
 	// Uncomment to store output in variable
@@ -136,8 +144,7 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 	// Start remote shell
 	err = sess.Shell()
 	if err != nil {
-		log.Print(err)
-		return
+		return err
 	}
 
 	// send the commands
@@ -149,8 +156,7 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 	for _, cmd := range commands {
 		_, err = fmt.Fprintf(stdin, "%s\n", cmd)
 		if err != nil {
-			log.Print(err)
-			return
+			return err
 		}
 	}
 
@@ -158,8 +164,7 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 	// Wait for sess to finish
 	err = sess.Wait()
 	if err != nil {
-		log.Print(err)
-		return
+		return err
 	}
 
 	// Uncomment to store in variable
@@ -176,8 +181,7 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 			config := reConf.FindAll(out, -1)[0]
 			err := os.WriteFile(fname, config, 0644)
 			if err != nil {
-				log.Print(err)
-				return
+				return err
 			}
 		} else {
 			log.Print(hostname, "config not found")
@@ -185,5 +189,5 @@ func run(hostname, username, password string, wg *sync.WaitGroup) {
 	} else {
 		log.Print(hostname, "hostname not found")
 	}
-
+	return nil
 }
