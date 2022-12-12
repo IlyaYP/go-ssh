@@ -70,8 +70,7 @@ func main() {
 	for _, hostname := range hosts {
 		hostname := hostname // https://go.dev/doc/faq#closures_and_goroutines
 		g.Go(func() error {
-			err := run(hostname, username, password)
-			return err
+			return run(hostname, username, password)
 		})
 	}
 
